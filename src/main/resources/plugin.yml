@@ -4,3 +4,21 @@ main: jp.tproject.customItemCreator.CustomItemCreator
 api-version: '1.21'
 authors: [ todomen ]
 description: this plugin is only used to T-Project.
+commands:
+  itemmenu:
+    description: カスタムアイテム作成メニューを開きます
+    usage: /itemmenu [list|help|get <id>]
+    permission: customitemcreator.use
+  itemstorage:
+    description: ストレージ設定を管理します
+    usage: /itemstorage [info|reload|migrate <mysql|yaml>]
+    permission: customitemcreator.admin
+permissions:
+  customitemcreator.use:
+    description: カスタムアイテムクリエーターを使用する権限
+    default: op
+  customitemcreator.admin:
+    description: カスタムアイテムクリエーターの管理者権限
+    default: op
+    children:
+      customitemcreator.use: true

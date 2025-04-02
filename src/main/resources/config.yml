@@ -1,0 +1,27 @@
+# CustomItemCreator Config
+
+# データストレージの設定
+storage:
+  # 保存方法: YAML または MYSQL
+  type: YAML
+
+  # MySQLの設定 (type: MYSQL の場合のみ使用)
+  mysql:
+    host: localhost
+    port: 3306
+    database: database
+    username: name
+    password: pass
+    table-prefix: customitem_
+    use-ssl: false
+
+    # HikariCP設定
+    pool-size: 10               # コネクションプールの最大サイズ
+    connection-timeout: 30000   # 接続タイムアウト (ミリ秒)
+    idle-timeout: 600000        # アイドル接続タイムアウト (ミリ秒)
+    max-lifetime: 1800000
+
+# その他の設定
+settings:
+  # デバッグモード (詳細なログを出力)
+  debug: false

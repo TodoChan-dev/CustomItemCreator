@@ -1,5 +1,6 @@
 plugins {
     id 'java'
+    id("com.github.johnrengelman.shadow") version "7.1.2"
 }
 
 group = 'jp.tproject'
@@ -19,6 +20,8 @@ repositories {
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.1-R0.1-SNAPSHOT")
+    // https://mvnrepository.com/artifact/com.zaxxer/HikariCP
+    implementation("com.zaxxer:HikariCP:6.3.0")
 }
 
 def targetJavaVersion = 21
@@ -45,5 +48,11 @@ processResources {
     filteringCharset 'UTF-8'
     filesMatching('plugin.yml') {
         expand props
+    }
+}
+shadowJar {
+    mergeServiceFiles()
+    dependencies {
+        include("com.zaxxer:HikariCP")
     }
 }
