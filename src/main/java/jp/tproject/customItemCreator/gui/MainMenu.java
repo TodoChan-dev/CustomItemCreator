@@ -8,6 +8,7 @@ import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.ItemStack;
 
 import java.util.Arrays;
 
@@ -28,8 +29,19 @@ public class MainMenu {
 
         // プレイヤーのカスタムアイテムを取得または新規作成
         if (!CustomItemCreator.getInstance().getItemManager().isEditing(player)) {
-            CustomItemCreator.getInstance().getItemManager().setPlayerItem(
-                    player, new CustomItem(Material.DIAMOND_SWORD));
+            // プレイヤーが持っているアイテムを取得
+            ItemStack heldItem = player.getInventory().getItemInMainHand();
+
+            // アイテムが空気の場合はデフォルトのダイヤモンドソードを使用
+            if (heldItem.getType() == Material.AIR) {
+                player.sendMessage(ChatColor.YELLOW + "手にアイテムを持っていないため、デフォルトのダイヤモンドソードを使用します。");
+                CustomItemCreator.getInstance().getItemManager().setPlayerItem(
+                        player, new CustomItem(Material.DIAMOND_SWORD));
+            } else {
+                CustomItemCreator.getInstance().getItemManager().setPlayerItem(
+                        player, new CustomItem(heldItem));
+            }
+
             CustomItemCreator.getInstance().getItemManager().setPlayerEditState(player, "MAIN");
         }
 

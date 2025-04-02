@@ -11,7 +11,7 @@ public enum Rarity {
     RARE(ChatColor.BLUE + "Rare", ChatColor.BLUE),
     EPIC(ChatColor.DARK_PURPLE + "Epic", ChatColor.DARK_PURPLE),
     LEGENDARY(ChatColor.GOLD + "Legendary", ChatColor.GOLD),
-    MYTHIC(ChatColor.YELLOW + "Mythic\n", ChatColor.YELLOW);
+    MYTHIC(ChatColor.YELLOW + "Mythic", ChatColor.YELLOW);
 
     private final String displayName;
     private final ChatColor color;

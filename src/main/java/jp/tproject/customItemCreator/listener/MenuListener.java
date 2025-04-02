@@ -68,6 +68,8 @@ public class MenuListener implements Listener {
             AttributeMenu.handleAttributeClick(player, event.getSlot(), event.getCurrentItem());
         } else if (editState.equals("ATTRIBUTE_SLOT")) {
             AttributeMenu.handleSlotClick(player, event.getSlot());
+        } else if (editState.equals("ATTRIBUTE_OPERATION")) {
+            AttributeMenu.handleOperationClick(player, event.getSlot());
         } else if (editState.equals("CONFIRMATION")) {
             ConfirmationMenu.handleClick(player, event.getSlot());
         } else if (editState.equals("SAVED_ITEMS")) {

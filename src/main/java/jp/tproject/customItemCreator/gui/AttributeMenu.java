@@ -2,18 +2,20 @@ package jp.tproject.customItemCreator.gui;
 
 import jp.tproject.customItemCreator.CustomItemCreator;
 import jp.tproject.customItemCreator.util.GuiUtil;
+import jp.tproject.customItemCreator.util.TranslationUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.attribute.Attribute;
+import org.bukkit.attribute.AttributeModifier;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
+import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.stream.Collectors;
+import java.util.List;
 
 /**
  * 属性設定メニューを管理するクラス
@@ -25,6 +27,9 @@ public class AttributeMenu {
 
     private static final String SLOT_MENU_TITLE = ChatColor.DARK_PURPLE + "装備スロットを選択";
     private static final int SLOT_MENU_SIZE = 9;
+
+    private static final String OPERATION_MENU_TITLE = ChatColor.DARK_PURPLE + "操作タイプを選択";
+    private static final int OPERATION_MENU_SIZE = 9;
 
     /**
      * 属性選択メニューを開く
@@ -38,11 +43,18 @@ public class AttributeMenu {
         for (Attribute attribute : Attribute.values()) {
             if (slot >= 53) break; // 安全対策
 
-            String name = formatAttributeName(attribute.name());
+            String jaName = TranslationUtil.getAttributeJaName(attribute);
+            String desc = TranslationUtil.getAttributeDesc(attribute);
+
+            List<String> lore = new ArrayList<>();
+            lore.add(ChatColor.GRAY + "クリックして値を設定");
+            if (!desc.isEmpty()) {
+                lore.add(ChatColor.ITALIC + desc);
+            }
 
             inventory.setItem(slot++, GuiUtil.createMenuItem(Material.POTION,
-                    ChatColor.LIGHT_PURPLE + name,
-                    Collections.singletonList(ChatColor.GRAY + "クリックして値を設定")));
+                    ChatColor.LIGHT_PURPLE + jaName,
+                    lore));
         }
 
         // 戻るボタン
@@ -100,6 +112,44 @@ public class AttributeMenu {
     }
 
     /**
+     * 操作タイプ選択メニューを開く
+     * @param player メニューを開くプレイヤー
+     */
+    public static void openOperationMenu(Player player) {
+        Inventory inventory = Bukkit.createInventory(null, OPERATION_MENU_SIZE, OPERATION_MENU_TITLE);
+
+        // 操作タイプのボタンを作成
+        inventory.setItem(0, GuiUtil.createMenuItem(Material.IRON_INGOT,
+                ChatColor.YELLOW + TranslationUtil.getOperationJaName(AttributeModifier.Operation.ADD_NUMBER),
+                Arrays.asList(
+                        "数値をそのまま追加します",
+                        "例: 10 → ベース値+10"
+                )));
+
+        inventory.setItem(1, GuiUtil.createMenuItem(Material.GOLD_INGOT,
+                ChatColor.YELLOW + TranslationUtil.getOperationJaName(AttributeModifier.Operation.ADD_SCALAR),
+                Arrays.asList(
+                        "元の値に対する割合を他の修飾子適用後に加算します",
+                        "例: 0.1 → (ベース値+他の修飾子)*1.1"
+                )));
+
+        inventory.setItem(2, GuiUtil.createMenuItem(Material.DIAMOND,
+                ChatColor.YELLOW + TranslationUtil.getOperationJaName(AttributeModifier.Operation.MULTIPLY_SCALAR_1),
+                Arrays.asList(
+                        "元の値に対する割合を直接乗算します",
+                        "例: 0.1 → ベース値*1.1"
+                )));
+
+        // 戻るボタン
+        inventory.setItem(8, GuiUtil.createMenuItem(Material.ARROW,
+                ChatColor.RED + "戻る",
+                "スロット選択に戻ります"));
+
+        player.openInventory(inventory);
+        CustomItemCreator.getInstance().getItemManager().setPlayerEditState(player, "ATTRIBUTE_OPERATION");
+    }
+
+    /**
      * 属性選択のクリックイベントを処理
      * @param player プレイヤー
      * @param slot クリックされたスロット
@@ -113,10 +163,20 @@ public class AttributeMenu {
 
         // 属性選択
         if (clickedItem.getType() == Material.POTION) {
-            String attributeName = ChatColor.stripColor(clickedItem.getItemMeta().getDisplayName())
-                    .toUpperCase().replace(" ", "_");
+            String displayName = ChatColor.stripColor(clickedItem.getItemMeta().getDisplayName());
 
+            // 日本語名から属性を検索
+            for (Attribute attribute : Attribute.values()) {
+                String jaName = TranslationUtil.getAttributeJaName(attribute);
+                if (displayName.equals(jaName)) {
+                    openSlotMenu(player, attribute);
+                    return;
+                }
+            }
+
+            // 見つからない場合、元のコードで試す
             try {
+                String attributeName = displayName.toUpperCase().replace(" ", "_");
                 Attribute attribute = Attribute.valueOf(attributeName);
                 openSlotMenu(player, attribute);
             } catch (IllegalArgumentException e) {
@@ -164,23 +224,42 @@ public class AttributeMenu {
         // 選択したスロットを保存
         CustomItemCreator.getInstance().getItemManager().setPlayerData(player, "selectedSlot", equipmentSlot);
 
-        // 値入力メニューを開く
-        Attribute attribute = (Attribute) CustomItemCreator.getInstance()
-                .getItemManager().getPlayerData(player, "selectedAttribute");
-
-        if (attribute != null) {
-            NumericInputMenu.open(player, attribute.name() + " の値を入力", 1, "ATTRIBUTE_VALUE");
-        }
+        // 操作タイプ選択メニューを開く
+        openOperationMenu(player);
     }
 
     /**
-     * 属性名を整形（SNAKE_CASE → Title Case）
-     * @param name 属性名（スネークケース）
-     * @return 整形された名前
+     * 操作タイプ選択のクリックイベントを処理
+     * @param player プレイヤー
+     * @param slot クリックされたスロット
      */
-    private static String formatAttributeName(String name) {
-        return Arrays.stream(name.toLowerCase().split("_"))
-                .map(word -> word.substring(0, 1).toUpperCase() + word.substring(1))
-                .collect(Collectors.joining(" "));
+    public static void handleOperationClick(Player player, int slot) {
+        if (slot == 8) { // 戻るボタン
+            EquipmentSlot equipmentSlot = (EquipmentSlot) CustomItemCreator.getInstance()
+                    .getItemManager().getPlayerData(player, "selectedSlot");
+
+            if (equipmentSlot != null) {
+                openSlotMenu(player, (Attribute) CustomItemCreator.getInstance()
+                        .getItemManager().getPlayerData(player, "selectedAttribute"));
+            } else {
+                open(player);
+            }
+            return;
+        }
+
+        // 操作タイプを保存
+        if (slot >= 0 && slot <= 2) {
+            AttributeModifier.Operation operation = TranslationUtil.getOperationByIndex(slot);
+            CustomItemCreator.getInstance().getItemManager().setPlayerData(player, "selectedOperation", operation);
+
+            // 値入力メニューを開く
+            Attribute attribute = (Attribute) CustomItemCreator.getInstance()
+                    .getItemManager().getPlayerData(player, "selectedAttribute");
+
+            if (attribute != null) {
+                // 属性値は小数点で扱うため、openDecimalメソッドを使用
+                NumericInputMenu.openDecimal(player, TranslationUtil.getAttributeJaName(attribute) + " の値を入力", 1.0, "ATTRIBUTE_VALUE");
+            }
+        }
     }
 }

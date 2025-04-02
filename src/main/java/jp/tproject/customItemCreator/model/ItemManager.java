@@ -25,8 +25,11 @@ public class ItemManager {
     // プレイヤーごとの数値編集値
     private final Map<UUID, Integer> playerNumericValue = new HashMap<>();
 
+    // プレイヤーごとの小数点数値編集値
+    private final Map<UUID, Double> playerDecimalValue = new HashMap<>();
+
     // プレイヤーごとのその他の一時データ
-    private final Map<UUID, Object> playerData = new HashMap<>();
+    private final Map<UUID, Map<String, Object>> playerData = new HashMap<>();
 
     /**
      * アイテムマネージャーを初期化
@@ -87,7 +90,7 @@ public class ItemManager {
      * @return 編集中の場合true
      */
     public boolean isEditing(Player player) {
-        return playerEditState.containsKey(player.getUniqueId());
+        return playerItems.containsKey(player.getUniqueId()) && playerEditState.containsKey(player.getUniqueId());
     }
 
     /**
@@ -109,6 +112,24 @@ public class ItemManager {
     }
 
     /**
+     * プレイヤーの小数点数値編集値を取得
+     * @param player プレイヤー
+     * @return 小数点数値
+     */
+    public double getPlayerDecimalValue(Player player) {
+        return playerDecimalValue.getOrDefault(player.getUniqueId(), 0.0);
+    }
+
+    /**
+     * プレイヤーの小数点数値編集値を設定
+     * @param player プレイヤー
+     * @param value 設定する小数点数値
+     */
+    public void setPlayerDecimalValue(Player player, double value) {
+        playerDecimalValue.put(player.getUniqueId(), value);
+    }
+
+    /**
      * プレイヤーのカスタムデータを取得
      * @param player プレイヤー
      * @param key データキー
@@ -118,7 +139,7 @@ public class ItemManager {
     @SuppressWarnings("unchecked")
     public <T> T getPlayerData(Player player, String key) {
         UUID playerId = player.getUniqueId();
-        Map<String, Object> playerDataMap = (Map<String, Object>) playerData.getOrDefault(playerId, new HashMap<String, Object>());
+        Map<String, Object> playerDataMap = playerData.getOrDefault(playerId, new HashMap<>());
         return (T) playerDataMap.get(key);
     }
 
@@ -128,10 +149,9 @@ public class ItemManager {
      * @param key データキー
      * @param value データ値
      */
-    @SuppressWarnings("unchecked")
     public void setPlayerData(Player player, String key, Object value) {
         UUID playerId = player.getUniqueId();
-        Map<String, Object> playerDataMap = (Map<String, Object>) playerData.getOrDefault(playerId, new HashMap<String, Object>());
+        Map<String, Object> playerDataMap = playerData.getOrDefault(playerId, new HashMap<>());
         playerDataMap.put(key, value);
         playerData.put(playerId, playerDataMap);
     }
@@ -145,6 +165,7 @@ public class ItemManager {
         playerItems.remove(playerId);
         playerEditState.remove(playerId);
         playerNumericValue.remove(playerId);
+        playerDecimalValue.remove(playerId);
         playerData.remove(playerId);
     }
 }
