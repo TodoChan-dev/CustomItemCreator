@@ -1,0 +1,6 @@
+name: CustomItemCreator
+version: '1.0.0'
+main: jp.tproject.customItemCreator.CustomItemCreator
+api-version: '1.21'
+authors: [ todomen ]
+description: this plugin is only used to T-Project.
