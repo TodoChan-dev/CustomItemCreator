@@ -9,7 +9,11 @@ import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -19,13 +23,23 @@ public class SavedItemsMenu {
 
     private static final String MENU_TITLE = ChatColor.DARK_PURPLE + "保存済みアイテム";
     private static final int MENU_SIZE = 54;
+    private static final int ITEMS_PER_PAGE = 45; // 5行 x 9列 = 45スロット
 
     /**
      * 保存アイテム一覧メニューを開く
      * @param player メニューを開くプレイヤー
      */
     public static void open(Player player) {
-        Inventory inventory = Bukkit.createInventory(null, MENU_SIZE, MENU_TITLE);
+        open(player, 0); // デフォルトは0ページ目から
+    }
+
+    /**
+     * 保存アイテム一覧メニューを指定ページで開く
+     * @param player メニューを開くプレイヤー
+     * @param page ページ番号（0から始まる）
+     */
+    public static void open(Player player, int page) {
+        Inventory inventory = Bukkit.createInventory(null, MENU_SIZE, MENU_TITLE + " - ページ " + (page + 1));
 
         // 保存済みアイテムを取得
         Map<String, ItemStack> savedItems = CustomItemCreator.getInstance().getConfigManager().getAllItems();
@@ -36,16 +50,66 @@ public class SavedItemsMenu {
                     ChatColor.RED + "アイテムがありません",
                     "アイテムを作成してください"));
         } else {
-            // 保存アイテムを表示
-            int slot = 0;
-            for (Map.Entry<String, ItemStack> entry : savedItems.entrySet()) {
-                if (slot >= 53) break; // 安全対策
+            // アイテムの総数とページ数を計算
+            int totalItems = savedItems.size();
+            int totalPages = (int) Math.ceil((double) totalItems / ITEMS_PER_PAGE);
+
+            // ページが範囲外なら調整
+            if (page < 0) page = 0;
+            if (page >= totalPages) page = totalPages - 1;
+
+            // 現在のページのアイテムのみ表示
+            List<Map.Entry<String, ItemStack>> itemList = new ArrayList<>(savedItems.entrySet());
+            int startIndex = page * ITEMS_PER_PAGE;
+            int endIndex = Math.min(startIndex + ITEMS_PER_PAGE, totalItems);
+
+            // アイテムを表示
+            for (int i = startIndex; i < endIndex; i++) {
+                Map.Entry<String, ItemStack> entry = itemList.get(i);
+                int slot = i - startIndex;
 
                 // アイテムIDを一時データとして保存
                 CustomItemCreator.getInstance().getItemManager().setPlayerData(
                         player, "item_id_slot_" + slot, entry.getKey());
 
-                inventory.setItem(slot++, entry.getValue());
+                // アイテムの表示（アイテムIDもロアに追加）
+                ItemStack displayItem = entry.getValue().clone();
+                ItemMeta meta = displayItem.getItemMeta();
+                if (meta != null) {
+                    List<String> lore = meta.hasLore() ? new ArrayList<>(meta.getLore()) : new ArrayList<>();
+                    lore.add("");
+                    lore.add(ChatColor.GRAY + "ID: " + entry.getKey());
+                    meta.setLore(lore);
+                    displayItem.setItemMeta(meta);
+                }
+
+                inventory.setItem(slot, displayItem);
+            }
+
+            // ページ情報をプレイヤーに保存
+            CustomItemCreator.getInstance().getItemManager().setPlayerData(player, "current_page", page);
+            CustomItemCreator.getInstance().getItemManager().setPlayerData(player, "total_pages", totalPages);
+
+            // ページ情報表示
+            inventory.setItem(49, GuiUtil.createMenuItem(Material.BOOK,
+                    ChatColor.YELLOW + "ページ " + (page + 1) + "/" + totalPages,
+                    Arrays.asList(
+                            ChatColor.GRAY + "合計 " + totalItems + " 個のアイテム",
+                            ChatColor.GRAY + "各ページ " + ITEMS_PER_PAGE + " 個表示"
+                    )));
+
+            // 前のページボタン（最初のページでなければ表示）
+            if (page > 0) {
+                inventory.setItem(48, GuiUtil.createMenuItem(Material.ARROW,
+                        ChatColor.AQUA + "前のページ",
+                        "前のページに移動します"));
+            }
+
+            // 次のページボタン（最後のページでなければ表示）
+            if (page < totalPages - 1) {
+                inventory.setItem(50, GuiUtil.createMenuItem(Material.ARROW,
+                        ChatColor.AQUA + "次のページ",
+                        "次のページに移動します"));
             }
         }
 
@@ -69,6 +133,27 @@ public class SavedItemsMenu {
             CustomItemCreator.getInstance().getItemManager().setPlayerItem(
                     player, new CustomItem(Material.DIAMOND_SWORD));
             MainMenu.open(player);
+            return;
+        }
+
+        if (slot == 48) { // 前のページ
+            Integer currentPage = (Integer) CustomItemCreator.getInstance().getItemManager().getPlayerData(player, "current_page");
+            if (currentPage != null && currentPage > 0) {
+                open(player, currentPage - 1);
+            }
+            return;
+        }
+
+        if (slot == 50) { // 次のページ
+            Integer currentPage = (Integer) CustomItemCreator.getInstance().getItemManager().getPlayerData(player, "current_page");
+            Integer totalPages = (Integer) CustomItemCreator.getInstance().getItemManager().getPlayerData(player, "total_pages");
+            if (currentPage != null && totalPages != null && currentPage < totalPages - 1) {
+                open(player, currentPage + 1);
+            }
+            return;
+        }
+
+        if (slot == 49) { // ページ情報（クリックしても何もしない）
             return;
         }
 
@@ -168,7 +253,9 @@ public class SavedItemsMenu {
                 break;
 
             case 8: // 戻る
-                open(player);
+                // 現在のページを取得して戻る
+                Integer currentPage = (Integer) CustomItemCreator.getInstance().getItemManager().getPlayerData(player, "current_page");
+                open(player, currentPage != null ? currentPage : 0);
                 break;
         }
     }
@@ -219,16 +306,24 @@ public class SavedItemsMenu {
             return;
         }
 
+        // 現在のページを取得
+        Integer currentPage = (Integer) CustomItemCreator.getInstance().getItemManager().getPlayerData(player, "current_page");
+        int page = currentPage != null ? currentPage : 0;
+
         switch (slot) {
             case 2: // 削除確定
                 CustomItemCreator.getInstance().getConfigManager().removeItem(itemId);
                 player.sendMessage(ChatColor.GREEN + "アイテムを削除しました。");
-                player.closeInventory();
-                open(player);
+
+                // 関連するレシピも削除
+                CustomItemCreator.getInstance().getRecipeManager().unregisterRecipe(itemId);
+
+                // 前のページを開く（削除後にアイテム数が減る可能性があるため）
+                open(player, page);
                 break;
 
             case 6: // キャンセル
-                open(player);
+                open(player, page);
                 break;
         }
     }

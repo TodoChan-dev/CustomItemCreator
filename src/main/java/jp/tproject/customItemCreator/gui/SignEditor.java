@@ -18,7 +18,9 @@ import org.bukkit.metadata.FixedMetadataValue;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 看板を使ったテキスト編集機能
@@ -27,6 +29,9 @@ public class SignEditor implements Listener {
 
     private final CustomItemCreator plugin;
     private static final String METADATA_KEY = "customitemcreator.edit";
+
+    // 看板ブロックの位置と元の素材を記録するマップ
+    private final Map<Location, Material> signLocations = new HashMap<>();
 
     /**
      * 看板エディタを初期化
@@ -54,6 +59,9 @@ public class SignEditor implements Listener {
 
         Block block = loc.getBlock();
         Material originalType = block.getType();
+
+        // 元のブロックタイプを記録
+        signLocations.put(loc, originalType);
 
         // 看板を設置
         block.setType(Material.OAK_SIGN);
@@ -91,16 +99,10 @@ public class SignEditor implements Listener {
 
             // 看板エディタを開く
             player.openSign(sign);
-
-            // 元のブロックに戻すタスクをスケジュール（10秒後）
-            Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                if (block.getType() == Material.OAK_SIGN || block.getType() == Material.OAK_WALL_SIGN) {
-                    block.setType(originalType);
-                }
-            }, 200L);
         } else {
             player.sendMessage(ChatColor.RED + "看板の設置に失敗しました。");
             block.setType(originalType);
+            signLocations.remove(loc);
         }
     }
 
@@ -125,6 +127,7 @@ public class SignEditor implements Listener {
 
         openEditor(player, "NAME", currentName, 0);
         player.sendMessage(ChatColor.GREEN + "アイテム名を入力してください。カラーコードには&記号が使えます。");
+        player.sendMessage(ChatColor.GOLD + "決定するには看板の内容を変更して完了してください。");
 
         // 編集状態を保存
         CustomItemCreator.getInstance().getItemManager().setPlayerEditState(player, "SIGN_EDIT_NAME");
@@ -151,6 +154,7 @@ public class SignEditor implements Listener {
         openEditor(player, "LORE", currentLore, 0);
         player.sendMessage(ChatColor.GREEN + "説明文を入力してください。最大4行まで設定できます。");
         player.sendMessage(ChatColor.GREEN + "カラーコードには&記号が使えます。");
+        player.sendMessage(ChatColor.GOLD + "決定するには看板の内容を変更して完了してください。");
 
         // 編集状態を保存
         CustomItemCreator.getInstance().getItemManager().setPlayerEditState(player, "SIGN_EDIT_LORE");
@@ -175,6 +179,7 @@ public class SignEditor implements Listener {
         openEditor(player, "LORE_LINE", currentLine, lineNumber);
         player.sendMessage(ChatColor.GREEN + "説明文の " + (lineNumber + 1) + " 行目を編集してください。");
         player.sendMessage(ChatColor.GREEN + "カラーコードには&記号が使えます。");
+        player.sendMessage(ChatColor.GOLD + "決定するには看板の内容を変更して完了してください。");
 
         // 編集状態を保存
         CustomItemCreator.getInstance().getItemManager().setPlayerEditState(player, "SIGN_EDIT_LORE_LINE");
@@ -256,11 +261,21 @@ public class SignEditor implements Listener {
                 break;
         }
 
+        // 看板の位置を記録から取得
+        Location signLocation = event.getBlock().getLocation();
+        Material originalType = signLocations.get(signLocation);
+
         // 看板を削除して元のブロックに戻す
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (event.getBlock().getType() == Material.OAK_SIGN ||
                     event.getBlock().getType() == Material.OAK_WALL_SIGN) {
-                event.getBlock().setType(Material.AIR);
+                if (originalType != null) {
+                    event.getBlock().setType(originalType);
+                } else {
+                    event.getBlock().setType(Material.AIR);
+                }
+                // 位置情報を削除
+                signLocations.remove(signLocation);
             }
         }, 1L);
 

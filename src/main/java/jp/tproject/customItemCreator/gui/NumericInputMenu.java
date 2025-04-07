@@ -9,9 +9,11 @@ import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeModifier;
+import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.EquipmentSlot;
+import org.bukkit.inventory.meta.ItemMeta;
 
 import java.text.DecimalFormat;
 import java.util.Collections;
@@ -175,6 +177,12 @@ public class NumericInputMenu {
         } else {
             // 通常の整数値で扱う
             int currentValue = CustomItemCreator.getInstance().getItemManager().getPlayerNumericValue(player);
+            int maxValue = 255; // デフォルトの最大値
+
+            // エンチャントレベルの場合
+            if (editType.equals("ENCHANTMENT_LEVEL_NEW")) {
+                maxValue = 255; // エンチャントの最大レベルを255に設定
+            }
 
             switch (slot) {
                 case 0: // -10
@@ -194,15 +202,15 @@ public class NumericInputMenu {
                     return;
 
                 case 6: // +1
-                    currentValue += 1;
+                    currentValue = Math.min(maxValue, currentValue + 1);
                     break;
 
                 case 7: // +5
-                    currentValue += 5;
+                    currentValue = Math.min(maxValue, currentValue + 5);
                     break;
 
                 case 8: // +10
-                    currentValue += 10;
+                    currentValue = Math.min(maxValue, currentValue + 10);
                     break;
             }
 
@@ -225,7 +233,31 @@ public class NumericInputMenu {
             // カスタムモデルデータを設定
             customItem.setCustomModelData((Integer) value);
             player.sendMessage(ChatColor.GREEN + "カスタムモデルデータを " + value + " に設定しました。");
+        } else if (editType.equals("ENCHANTMENT_LEVEL_NEW") && value instanceof Integer) {
+            // エンチャントレベルを設定
+            Enchantment enchantment = (Enchantment) CustomItemCreator.getInstance().getItemManager().getPlayerData(player, "selectedEnchantment");
 
+            if (enchantment != null) {
+                int level = (Integer) value;
+
+                if (level <= 0) {
+                    // エンチャントを削除
+                    ItemMeta meta = customItem.getItemStack().getItemMeta();
+                    if (meta != null) {
+                        meta.removeEnchant(enchantment);
+                        customItem.getItemStack().setItemMeta(meta);
+                    }
+                    player.sendMessage(ChatColor.GREEN + "エンチャント " +
+                            TranslationUtil.getEnchantmentJaName(enchantment.getKey().getKey()) +
+                            " を削除しました。");
+                } else {
+                    // エンチャントを追加/更新
+                    customItem.addEnchant(enchantment, level);
+                    player.sendMessage(ChatColor.GREEN + "エンチャント " +
+                            TranslationUtil.getEnchantmentJaName(enchantment.getKey().getKey()) +
+                            " のレベルを " + level + " に設定しました。");
+                }
+            }
         } else if (editType.equals("ATTRIBUTE_VALUE")) {
             // 属性値を設定
             Attribute attribute = (Attribute) CustomItemCreator.getInstance().getItemManager().getPlayerData(player, "selectedAttribute");

@@ -1,12 +1,13 @@
 package jp.tproject.customItemCreator;
 
-
 import jp.tproject.customItemCreator.command.ItemMenuCommand;
 import jp.tproject.customItemCreator.command.StorageCommand;
 import jp.tproject.customItemCreator.gui.SignEditor;
+import jp.tproject.customItemCreator.listener.ChatInputListener;
 import jp.tproject.customItemCreator.listener.MenuListener;
 import jp.tproject.customItemCreator.model.ItemManager;
 import jp.tproject.customItemCreator.util.ConfigManager;
+import jp.tproject.customItemCreator.util.RecipeManager;
 import org.bukkit.NamespacedKey;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -21,6 +22,8 @@ public class CustomItemCreator extends JavaPlugin {
     private ConfigManager configManager;
     private ItemManager itemManager;
     private SignEditor signEditor;
+    private RecipeManager recipeManager;
+    private ChatInputListener chatInputListener;
 
     @Override
     public void onEnable() {
@@ -35,6 +38,8 @@ public class CustomItemCreator extends JavaPlugin {
         this.configManager = new ConfigManager(this);
         this.itemManager = new ItemManager(this);
         this.signEditor = new SignEditor(this);
+        this.recipeManager = new RecipeManager(this);
+        this.chatInputListener = new ChatInputListener(this);
 
         // コマンド登録
         getCommand("itemmenu").setExecutor(new ItemMenuCommand());
@@ -42,6 +47,10 @@ public class CustomItemCreator extends JavaPlugin {
 
         // イベントリスナー登録
         getServer().getPluginManager().registerEvents(new MenuListener(this), this);
+        getServer().getPluginManager().registerEvents(chatInputListener, this);
+
+        // カスタムレシピを登録
+        this.recipeManager.registerAllRecipes();
 
         getLogger().info("CustomItemCreator プラグインが有効になりました。");
         getLogger().info("ストレージタイプ: " + configManager.getStorageType());
@@ -49,7 +58,14 @@ public class CustomItemCreator extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        // レシピを削除
+        if (recipeManager != null) {
+            recipeManager.clearAllRecipes();
+        }
+
+        // 設定を保存
         configManager.saveConfig();
+
         getLogger().info("CustomItemCreator プラグインが無効になりました。");
     }
 
@@ -94,11 +110,31 @@ public class CustomItemCreator extends JavaPlugin {
     }
 
     /**
+     * レシピマネージャーを取得
+     * @return レシピマネージャー
+     */
+    public RecipeManager getRecipeManager() {
+        return recipeManager;
+    }
+
+    /**
+     * チャット入力リスナーを取得
+     * @return チャット入力リスナー
+     */
+    public ChatInputListener getChatInputListener() {
+        return chatInputListener;
+    }
+
+    /**
      * 設定をリロード
      */
     public void reloadPlugin() {
         reloadConfig();
         configManager.reloadConfig();
+
+        // レシピを再登録
+        recipeManager.registerAllRecipes();
+
         getLogger().info("設定をリロードしました。ストレージタイプ: " + configManager.getStorageType());
     }
 }

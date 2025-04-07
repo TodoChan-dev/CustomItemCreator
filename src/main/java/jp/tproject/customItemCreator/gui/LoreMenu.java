@@ -116,16 +116,18 @@ public class LoreMenu {
 
         if (slot == 0) {
             // 全体を編集
-            SignEditor signEditor = new SignEditor(CustomItemCreator.getInstance());
-            signEditor.editLore(player);
+            player.closeInventory();
+            CustomItemCreator.getInstance().getItemManager().setPlayerEditState(player, "CHAT_EDIT_LORE");
+            CustomItemCreator.getInstance().getChatInputListener().startLoreEdit(player);
             return;
         }
 
         if (slot == 45) {
             // 新しい行を追加
             int newLineIndex = currentLore.size();
-            SignEditor signEditor = new SignEditor(CustomItemCreator.getInstance());
-            signEditor.editLoreLine(player, newLineIndex);
+            player.closeInventory();
+            CustomItemCreator.getInstance().getItemManager().setPlayerEditState(player, "CHAT_EDIT_LORE_LINE");
+            CustomItemCreator.getInstance().getChatInputListener().startLoreLineEdit(player, newLineIndex);
             return;
         }
 
@@ -145,8 +147,9 @@ public class LoreMenu {
         if (slot >= 9 && slot < 45 && slot % 9 == 0) {
             int lineIndex = (slot - 9) / 9;
             if (lineIndex < currentLore.size()) {
-                SignEditor signEditor = new SignEditor(CustomItemCreator.getInstance());
-                signEditor.editLoreLine(player, lineIndex);
+                player.closeInventory();
+                CustomItemCreator.getInstance().getItemManager().setPlayerEditState(player, "CHAT_EDIT_LORE_LINE");
+                CustomItemCreator.getInstance().getChatInputListener().startLoreLineEdit(player, lineIndex);
             }
             return;
         }

@@ -48,31 +48,35 @@ public class MainMenu {
         CustomItem customItem = CustomItemCreator.getInstance().getItemManager().getPlayerItem(player);
 
         // メニューアイテム
-        inventory.setItem(13, GuiUtil.createMenuItem(Material.NAME_TAG,
+        inventory.setItem(10, GuiUtil.createMenuItem(Material.NAME_TAG,
                 ChatColor.YELLOW + "アイテム名を編集",
                 "クリックしてアイテム名を編集します"));
 
-        inventory.setItem(20, GuiUtil.createMenuItem(Material.BOOK,
+        inventory.setItem(12, GuiUtil.createMenuItem(Material.BOOK,
                 ChatColor.YELLOW + "説明文（ロア）を編集",
                 "クリックして説明文を編集します"));
 
-        inventory.setItem(22, GuiUtil.createMenuItem(Material.DIAMOND,
+        inventory.setItem(14, GuiUtil.createMenuItem(Material.DIAMOND,
                 ChatColor.YELLOW + "レア度を設定",
                 "クリックしてレア度を選択します"));
 
-        inventory.setItem(24, GuiUtil.createMenuItem(Material.PAINTING,
+        inventory.setItem(16, GuiUtil.createMenuItem(Material.PAINTING,
                 ChatColor.YELLOW + "カスタムモデルデータ",
                 "クリックして数値を設定します"));
 
-        inventory.setItem(29, GuiUtil.createMenuItem(Material.ENCHANTED_BOOK,
+        inventory.setItem(28, GuiUtil.createMenuItem(Material.ENCHANTED_BOOK,
                 ChatColor.YELLOW + "エンチャントを追加",
                 "クリックしてエンチャントを追加します"));
 
-        inventory.setItem(31, GuiUtil.createMenuItem(Material.BEACON,
+        inventory.setItem(30, GuiUtil.createMenuItem(Material.BEACON,
                 ChatColor.YELLOW + "属性を設定",
                 "クリックして属性を編集します"));
 
-        inventory.setItem(33, GuiUtil.createMenuItem(Material.BARRIER,
+        inventory.setItem(32, GuiUtil.createMenuItem(Material.CRAFTING_TABLE,
+                ChatColor.YELLOW + "レシピを設定",
+                "クリックしてクラフトレシピを設定します"));
+
+        inventory.setItem(34, GuiUtil.createMenuItem(Material.BARRIER,
                 ChatColor.YELLOW + "エンチャント/属性をリセット",
                 "クリックして全てのエンチャントと属性をリセットします"));
 
@@ -102,20 +106,23 @@ public class MainMenu {
      */
     public static void handleClick(Player player, int slot) {
         switch (slot) {
-            case 13: // アイテム名を編集
-                SignEditor signEditor = new SignEditor(CustomItemCreator.getInstance());
-                signEditor.editName(player);
+            case 10: // アイテム名を編集
+                player.closeInventory();
+                CustomItemCreator.getInstance().getItemManager().setPlayerEditState(player, "CHAT_EDIT_NAME");
+                CustomItemCreator.getInstance().getChatInputListener().startNameEdit(player);
                 break;
 
-            case 20: // 説明文（ロア）を編集
-                LoreMenu.open(player);
+            case 12: // 説明文（ロア）を編集
+                player.closeInventory();
+                CustomItemCreator.getInstance().getItemManager().setPlayerEditState(player, "CHAT_EDIT_LORE");
+                CustomItemCreator.getInstance().getChatInputListener().startLoreEdit(player);
                 break;
 
-            case 22: // レア度を設定
+            case 14: // レア度を設定
                 RarityMenu.open(player);
                 break;
 
-            case 24: // カスタムモデルデータを設定
+            case 16: // カスタムモデルデータを設定
                 CustomItem item = CustomItemCreator.getInstance().getItemManager().getPlayerItem(player);
                 int currentModelData = item.getItemStack().getItemMeta().hasCustomModelData() ?
                         item.getItemStack().getItemMeta().getCustomModelData() : 0;
@@ -124,15 +131,19 @@ public class MainMenu {
                         currentModelData, "CUSTOM_MODEL_DATA");
                 break;
 
-            case 29: // エンチャントを追加
+            case 28: // エンチャントを追加
                 EnchantmentMenu.open(player);
                 break;
 
-            case 31: // 属性を設定
+            case 30: // 属性を設定
                 AttributeMenu.open(player);
                 break;
 
-            case 33: // エンチャント/属性をリセット
+            case 32: // レシピを設定
+                RecipeMenu.open(player);
+                break;
+
+            case 34: // エンチャント/属性をリセット
                 CustomItem customItem = CustomItemCreator.getInstance().getItemManager().getPlayerItem(player);
                 customItem.resetEnchantmentsAndAttributes();
                 player.sendMessage(ChatColor.GREEN + "エンチャントと属性がリセットされました。");

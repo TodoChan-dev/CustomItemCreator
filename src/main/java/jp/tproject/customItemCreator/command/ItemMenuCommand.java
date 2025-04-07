@@ -13,6 +13,7 @@ import org.bukkit.entity.Player;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 /**
  * アイテムメニューコマンドを実行するクラス
@@ -40,8 +41,25 @@ public class ItemMenuCommand implements CommandExecutor, TabCompleter {
         if (args.length > 0) {
             switch (args[0].toLowerCase()) {
                 case "list":
+                    // ページ指定があるか確認
+                    int page = 0;
+                    if (args.length > 1) {
+                        try {
+                            page = Integer.parseInt(args[1]) - 1; // 1ページ目は0になるよう調整
+                            if (page < 0) page = 0;
+                        } catch (NumberFormatException e) {
+                            player.sendMessage(ChatColor.RED + "ページ番号は数値で指定してください。");
+                        }
+                    }
+
                     // 保存済みアイテム一覧を表示
-                    SavedItemsMenu.open(player);
+                    Map<String, org.bukkit.inventory.ItemStack> items =
+                            CustomItemCreator.getInstance().getConfigManager().getAllItems();
+
+                    player.sendMessage(ChatColor.GREEN + "保存済みアイテム一覧を表示します。全 " +
+                            items.size() + " 個のアイテムが登録されています。");
+
+                    SavedItemsMenu.open(player, page);
                     return true;
 
                 case "help":
@@ -61,6 +79,22 @@ public class ItemMenuCommand implements CommandExecutor, TabCompleter {
                         getItemById(player, itemId);
                     } catch (Exception e) {
                         player.sendMessage(ChatColor.RED + "アイテムの取得中にエラーが発生しました: " + e.getMessage());
+                    }
+                    return true;
+
+                case "page":
+                    // ページ指定で一覧表示
+                    if (args.length < 2) {
+                        player.sendMessage(ChatColor.RED + "使用法: /itemmenu page <ページ番号>");
+                        return true;
+                    }
+
+                    try {
+                        int pageNum = Integer.parseInt(args[1]) - 1; // 1ページ目は0になるよう調整
+                        if (pageNum < 0) pageNum = 0;
+                        SavedItemsMenu.open(player, pageNum);
+                    } catch (NumberFormatException e) {
+                        player.sendMessage(ChatColor.RED + "ページ番号は数値で指定してください。");
                     }
                     return true;
             }
@@ -98,6 +132,8 @@ public class ItemMenuCommand implements CommandExecutor, TabCompleter {
         player.sendMessage(ChatColor.GOLD + "===== CustomItemCreator ヘルプ =====");
         player.sendMessage(ChatColor.YELLOW + "/itemmenu " + ChatColor.WHITE + "- アイテム作成メニューを開きます");
         player.sendMessage(ChatColor.YELLOW + "/itemmenu list " + ChatColor.WHITE + "- 保存済みアイテム一覧を表示します");
+        player.sendMessage(ChatColor.YELLOW + "/itemmenu list <ページ番号> " + ChatColor.WHITE + "- 指定ページのアイテム一覧を表示します");
+        player.sendMessage(ChatColor.YELLOW + "/itemmenu page <ページ番号> " + ChatColor.WHITE + "- 指定ページのアイテム一覧を表示します");
         player.sendMessage(ChatColor.YELLOW + "/itemmenu get <アイテムID> " + ChatColor.WHITE + "- 指定IDのアイテムを取得します");
         player.sendMessage(ChatColor.YELLOW + "/itemmenu help " + ChatColor.WHITE + "- このヘルプを表示します");
     }
@@ -119,15 +155,37 @@ public class ItemMenuCommand implements CommandExecutor, TabCompleter {
 
         if (args.length == 1) {
             // サブコマンドの補完
-            List<String> subCommands = Arrays.asList("list", "help", "get");
+            List<String> subCommands = Arrays.asList("list", "help", "get", "page");
             for (String subCmd : subCommands) {
                 if (subCmd.startsWith(args[0].toLowerCase())) {
                     completions.add(subCmd);
                 }
             }
         } else if (args.length == 2 && args[0].equalsIgnoreCase("get")) {
-            // アイテムIDの補完
-            // 実装が複雑になるので省略（必要に応じて実装可能）
+            // アイテムIDの補完（実装されていない部分を追加）
+            Map<String, org.bukkit.inventory.ItemStack> items =
+                    CustomItemCreator.getInstance().getConfigManager().getAllItems();
+
+            // すべてのアイテムIDを取得
+            for (String itemId : items.keySet()) {
+                if (itemId.startsWith(args[1])) {
+                    completions.add(itemId);
+                }
+            }
+        } else if (args.length == 2 && (args[0].equalsIgnoreCase("list") || args[0].equalsIgnoreCase("page"))) {
+            // ページ番号の補完
+            Map<String, org.bukkit.inventory.ItemStack> items =
+                    CustomItemCreator.getInstance().getConfigManager().getAllItems();
+
+            // アイテム数からページ数を計算
+            int totalPages = (int) Math.ceil(items.size() / 45.0);
+
+            for (int i = 1; i <= totalPages; i++) {
+                String pageNum = String.valueOf(i);
+                if (pageNum.startsWith(args[1])) {
+                    completions.add(pageNum);
+                }
+            }
         }
 
         return completions;
