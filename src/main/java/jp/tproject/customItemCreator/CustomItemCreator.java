@@ -1,5 +1,6 @@
 package jp.tproject.customItemCreator;
 
+import jp.tproject.customItemCreator.api.ApiServer;
 import jp.tproject.customItemCreator.command.ItemMenuCommand;
 import jp.tproject.customItemCreator.command.StorageCommand;
 import jp.tproject.customItemCreator.gui.SignEditor;
@@ -24,6 +25,7 @@ public class CustomItemCreator extends JavaPlugin {
     private SignEditor signEditor;
     private RecipeManager recipeManager;
     private ChatInputListener chatInputListener;
+    private ApiServer apiServer; // APIサーバー追加
 
     @Override
     public void onEnable() {
@@ -52,8 +54,13 @@ public class CustomItemCreator extends JavaPlugin {
         // カスタムレシピを登録
         this.recipeManager.registerAllRecipes();
 
+        // APIサーバーを起動
+        this.apiServer = new ApiServer(this, 2002);
+        this.apiServer.start();
+
         getLogger().info("CustomItemCreator プラグインが有効になりました。");
         getLogger().info("ストレージタイプ: " + configManager.getStorageType());
+        getLogger().info("API Server: http://localhost:2002/api/items");
     }
 
     @Override
@@ -65,6 +72,11 @@ public class CustomItemCreator extends JavaPlugin {
 
         // 設定を保存
         configManager.saveConfig();
+
+        // APIサーバーを停止
+        if (apiServer != null) {
+            apiServer.stop();
+        }
 
         getLogger().info("CustomItemCreator プラグインが無効になりました。");
     }
