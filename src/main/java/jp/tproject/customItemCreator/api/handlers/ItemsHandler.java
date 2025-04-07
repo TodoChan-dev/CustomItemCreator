@@ -3,13 +3,11 @@ package jp.tproject.customItemCreator.api.handlers;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import jp.tproject.customItemCreator.CustomItemCreator;
+import jp.tproject.customItemCreator.api.utils.JsonUtils;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -46,7 +44,7 @@ public class ItemsHandler implements HttpHandler {
             Map<String, ItemStack> items = plugin.getConfigManager().getAllItems();
 
             // JSON形式に変換して返す
-            String response = serializeItemsToJson(items);
+            String response = JsonUtils.itemMapToJson(items);
 
             // 成功レスポンスを送信
             exchange.getResponseHeaders().set("Content-Type", "application/json");
@@ -60,57 +58,6 @@ public class ItemsHandler implements HttpHandler {
         } finally {
             exchange.close();
         }
-    }
-
-    /**
-     * アイテムマップをJSON形式にシリアライズ
-     * @param items アイテムマップ
-     * @return JSON文字列
-     */
-    private String serializeItemsToJson(Map<String, ItemStack> items) {
-        List<String> itemJsonList = new ArrayList<>();
-
-        for (Map.Entry<String, ItemStack> entry : items.entrySet()) {
-            String itemId = entry.getKey();
-            ItemStack item = entry.getValue();
-
-            // アイテムの基本情報を取得
-            String itemType = item.getType().name();
-            int amount = item.getAmount();
-
-            // 表示名を取得
-            String displayName = item.getType().name();
-            if (item.hasItemMeta() && item.getItemMeta().hasDisplayName()) {
-                displayName = escapeJson(item.getItemMeta().getDisplayName());
-            }
-
-            // カスタムモデルデータを取得
-            int customModelData = 0;
-            if (item.hasItemMeta() && item.getItemMeta().hasCustomModelData()) {
-                customModelData = item.getItemMeta().getCustomModelData();
-            }
-
-            // JSONオブジェクトを作成
-            itemJsonList.add(String.format(
-                    "{\"id\":\"%s\",\"type\":\"%s\",\"displayName\":\"%s\",\"amount\":%d,\"customModelData\":%d}",
-                    itemId, itemType, displayName, amount, customModelData
-            ));
-        }
-
-        return "[" + String.join(",", itemJsonList) + "]";
-    }
-
-    /**
-     * JSON文字列をエスケープ
-     * @param text エスケープする文字列
-     * @return エスケープされた文字列
-     */
-    private String escapeJson(String text) {
-        return text.replace("\\", "\\\\")
-                .replace("\"", "\\\"")
-                .replace("\n", "\\n")
-                .replace("\r", "\\r")
-                .replace("\t", "\\t");
     }
 
     /**

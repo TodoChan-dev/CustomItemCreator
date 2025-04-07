@@ -3,22 +3,11 @@ package jp.tproject.customItemCreator.api.handlers;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import jp.tproject.customItemCreator.CustomItemCreator;
-import org.bukkit.enchantments.Enchantment;
+import jp.tproject.customItemCreator.api.utils.JsonUtils;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.attribute.Attribute;
-import org.bukkit.attribute.AttributeModifier;
-import org.bukkit.persistence.PersistentDataContainer;
-import org.bukkit.persistence.PersistentDataType;
-import org.bukkit.NamespacedKey;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
 
 /**
  * アイテム詳細を取得するAPIハンドラ
@@ -68,7 +57,7 @@ public class ItemDetailHandler implements HttpHandler {
             }
 
             // JSON形式に変換して返す
-            String response = serializeItemToJson(itemId, item);
+            String response = JsonUtils.itemToDetailJson(itemId, item, plugin.getCustomItemKey());
 
             // 成功レスポンスを送信
             exchange.getResponseHeaders().set("Content-Type", "application/json");
@@ -82,147 +71,6 @@ public class ItemDetailHandler implements HttpHandler {
         } finally {
             exchange.close();
         }
-    }
-
-    /**
-     * アイテムをJSON形式にシリアライズ
-     * @param itemId アイテムID
-     * @param item アイテム
-     * @return JSON文字列
-     */
-    @SuppressWarnings("removal")
-    private String serializeItemToJson(String itemId, ItemStack item) {
-        StringBuilder json = new StringBuilder();
-        json.append("{");
-
-        // 基本情報
-        json.append("\"id\":\"").append(itemId).append("\",");
-        json.append("\"type\":\"").append(item.getType().name()).append("\",");
-        json.append("\"amount\":").append(item.getAmount()).append(",");
-
-        ItemMeta meta = item.getItemMeta();
-        if (meta != null) {
-            // 表示名
-            if (meta.hasDisplayName()) {
-                json.append("\"displayName\":\"").append(escapeJson(meta.getDisplayName())).append("\",");
-            } else {
-                json.append("\"displayName\":\"").append(item.getType().name()).append("\",");
-            }
-
-            // ロア（説明文）
-            if (meta.hasLore()) {
-                List<String> lore = meta.getLore();
-                json.append("\"lore\":[");
-                List<String> loreJsonList = new ArrayList<>();
-                for (String loreLine : lore) {
-                    loreJsonList.add("\"" + escapeJson(loreLine) + "\"");
-                }
-                json.append(String.join(",", loreJsonList));
-                json.append("],");
-            } else {
-                json.append("\"lore\":[],");
-            }
-
-            // エンチャント
-            json.append("\"enchantments\":[");
-            List<String> enchantmentList = new ArrayList<>();
-            for (Map.Entry<Enchantment, Integer> entry : meta.getEnchants().entrySet()) {
-                String enchantName = entry.getKey().getKey().getKey();
-                int level = entry.getValue();
-                enchantmentList.add(String.format(
-                        "{\"name\":\"%s\",\"level\":%d}",
-                        enchantName, level
-                ));
-            }
-            json.append(String.join(",", enchantmentList));
-            json.append("],");
-
-            // 属性（アトリビュート）
-            json.append("\"attributes\":[");
-            if (meta.hasAttributeModifiers()) {
-                List<String> attributeList = new ArrayList<>();
-                for (Attribute attribute : Attribute.values()) {
-                    Collection<AttributeModifier> modifiers = meta.getAttributeModifiers(attribute);
-                    if (modifiers != null && !modifiers.isEmpty()) {
-                        for (AttributeModifier modifier : modifiers) {
-                            attributeList.add(String.format(
-                                    "{\"name\":\"%s\",\"slot\":\"%s\",\"amount\":%.2f,\"operation\":\"%s\",\"uuid\":\"%s\"}",
-                                    attribute.name(),
-                                    modifier.getSlot() != null ? modifier.getSlot().name() : "ALL",
-                                    modifier.getAmount(),
-                                    modifier.getOperation().name(),
-                                    modifier.getUniqueId().toString()
-                            ));
-                        }
-                    }
-                }
-                json.append(String.join(",", attributeList));
-            }
-            json.append("],");
-
-            // カスタムモデルデータ
-            if (meta.hasCustomModelData()) {
-                json.append("\"customModelData\":").append(meta.getCustomModelData()).append(",");
-            } else {
-                json.append("\"customModelData\":0,");
-            }
-
-            // アイテムフラグ
-            json.append("\"flags\":[");
-            List<String> flagList = new ArrayList<>();
-            for (org.bukkit.inventory.ItemFlag flag : meta.getItemFlags()) {
-                flagList.add("\"" + flag.name() + "\"");
-            }
-            json.append(String.join(",", flagList));
-            json.append("],");
-
-            // 耐久値
-            if (meta.isUnbreakable()) {
-                json.append("\"unbreakable\":true,");
-            } else {
-                json.append("\"unbreakable\":false,");
-            }
-
-            // PersistentDataContainer
-            json.append("\"persistentData\":{");
-            PersistentDataContainer container = meta.getPersistentDataContainer();
-            List<String> keyValuePairs = new ArrayList<>();
-
-            // カスタムアイテムIDを取得
-            NamespacedKey customItemKey = plugin.getCustomItemKey();
-            if (container.has(customItemKey, PersistentDataType.STRING)) {
-                String customItemId = container.get(customItemKey, PersistentDataType.STRING);
-                keyValuePairs.add(String.format("\"customItemId\":\"%s\"", customItemId));
-            }
-
-            json.append(String.join(",", keyValuePairs));
-            json.append("}");
-        } else {
-            json.append("\"displayName\":\"").append(item.getType().name()).append("\",");
-            json.append("\"lore\":[],");
-            json.append("\"enchantments\":[],");
-            json.append("\"attributes\":[],");
-            json.append("\"customModelData\":0,");
-            json.append("\"flags\":[],");
-            json.append("\"unbreakable\":false,");
-            json.append("\"persistentData\":{}");
-        }
-
-        json.append("}");
-        return json.toString();
-    }
-
-    /**
-     * JSON文字列をエスケープ
-     * @param text エスケープする文字列
-     * @return エスケープされた文字列
-     */
-    private String escapeJson(String text) {
-        return text.replace("\\", "\\\\")
-                .replace("\"", "\\\"")
-                .replace("\n", "\\n")
-                .replace("\r", "\\r")
-                .replace("\t", "\\t");
     }
 
     /**
