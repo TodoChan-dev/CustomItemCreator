@@ -206,6 +206,7 @@ public class JsonUtils {
      * @param sb JSONビルダー
      * @param meta アイテムメタ
      */
+    @SuppressWarnings("removal")
     private static void appendAttributes(StringBuilder sb, ItemMeta meta) {
         sb.append("\"attributes\":[");
         if (meta.hasAttributeModifiers()) {

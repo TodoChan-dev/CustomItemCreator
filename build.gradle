@@ -51,8 +51,5 @@ processResources {
     }
 }
 shadowJar {
-    mergeServiceFiles()
-    dependencies {
-        include("com.zaxxer:HikariCP")
-    }
+
 }
