@@ -10,7 +10,10 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
+import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.player.PlayerEditBookEvent;
+import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.BookMeta;
 
 import java.util.Arrays;
@@ -75,9 +78,13 @@ public class MenuListener implements Listener {
 
             if (isPlayerInventory) {
                 // プレイヤーのインベントリ部分のクリックは許可（キャンセルしない）
+                // ただし、クリックの種類によって処理を分ける
+                handleCraftingInventoryClick(event, player);
                 return;
             } else if (isCraftSlot) {
                 // クラフトグリッドのスロットは許可（キャンセルしない）
+                // ただし、アイテムの置き換えを適切に処理
+                handleCraftingGridClick(event, player);
                 return;
             } else if (isCraftButton) {
                 // 操作ボタンはキャンセルしてメソッド呼び出し
@@ -139,6 +146,94 @@ public class MenuListener implements Listener {
         } else if (editState.equals("RECIPE_DELETE_CONFIRM")) {
             RecipeMenu.handleDeleteConfirmClick(player, event.getSlot());
         }
+    }
+
+    /**
+     * プレイヤーインベントリからクラフトグリッドへのアイテム移動を処理
+     * @param event クリックイベント
+     * @param player プレイヤー
+     */
+    private void handleCraftingInventoryClick(InventoryClickEvent event, Player player) {
+        // プレイヤーのインベントリからクラフトグリッドへの移動を処理
+        switch (event.getClick()) {
+            case LEFT:
+            case RIGHT:
+            case SHIFT_LEFT:
+            case SHIFT_RIGHT:
+                // これらのクリックタイプは通常のアイテム移動を許可
+                // ここではイベントをキャンセルせず、デフォルトの動作を許可
+                break;
+            default:
+                // その他のクリックタイプはデフォルトの動作
+                break;
+        }
+    }
+
+    /**
+     * クラフトグリッド内のアイテム配置を処理
+     * @param event クリックイベント
+     * @param player プレイヤー
+     */
+    private void handleCraftingGridClick(InventoryClickEvent event, Player player) {
+        // クラフトグリッド内のスロットでのクリック
+        switch (event.getClick()) {
+            case LEFT:
+            case RIGHT:
+            case SHIFT_LEFT:
+            case SHIFT_RIGHT:
+                // これらのクリックタイプは通常のアイテム移動を許可
+                // ここではイベントをキャンセルせず、デフォルトの動作を許可
+                break;
+            default:
+                // その他のクリックタイプはデフォルトの動作
+                break;
+        }
+    }
+
+    /**
+     * ドラッグイベントを処理
+     */
+    @EventHandler
+    public void onInventoryDrag(InventoryDragEvent event) {
+        if (!(event.getWhoClicked() instanceof Player)) return;
+
+        Player player = (Player) event.getWhoClicked();
+        String title = event.getView().getTitle();
+
+        // カスタムアイテム関連のメニューかどうかを確認
+        if (!title.startsWith(ChatColor.DARK_PURPLE.toString()) &&
+                !title.startsWith(ChatColor.RED.toString())) {
+            return;
+        }
+
+        // 編集状態を取得
+        String editState = plugin.getItemManager().getPlayerEditState(player);
+
+        // クラフトグリッド編集時は特別処理
+        if (editState.equals("CRAFTING_GRID")) {
+            boolean isCraftingSlotsOnly = true;
+
+            // ドラッグされたすべてのスロットをチェック
+            for (int slot : event.getRawSlots()) {
+                // インベントリのサイズより小さいスロット（上部インベントリ）
+                if (slot < event.getView().getTopInventory().getSize()) {
+                    // クラフトスロットでなければキャンセル
+                    if (!isInCraftingSlot(slot)) {
+                        isCraftingSlotsOnly = false;
+                        break;
+                    }
+                }
+            }
+
+            // クラフトスロット以外へのドラッグはキャンセル
+            if (!isCraftingSlotsOnly) {
+                event.setCancelled(true);
+            }
+            return;
+        }
+
+        // クラフトグリッド以外のメニューではドラッグをキャンセル
+        event.setCancelled(true);
     }
 
     /**
